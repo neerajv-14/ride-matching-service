@@ -20,10 +20,8 @@ spring:
               packages: "*"
             use:
               type:
-                headers: false
-            value:
-              default:
-                type: com.rideshare.matching_service.event.RideRequestedEvent
+                headers: true
+
     #Kafka Producer
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer

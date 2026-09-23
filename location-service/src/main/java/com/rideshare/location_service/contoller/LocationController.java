@@ -36,4 +36,19 @@ public class LocationController {
         locationService.removeDriverByID(driverId);
         return ResponseEntity.ok("Driver is removed");
     }
+
+    @PostMapping("/drivers/{driverId}/on-trip")
+    public void markDriverOnTrip(
+            @PathVariable String driverId,
+            @RequestParam String rideId) {
+
+        locationService.markDriverOnTrip(driverId, rideId);
+    }
+
+    @PostMapping("/drivers/{driverId}/ride-complete")
+    public void markDriverAvailableAfterTripCompletion(
+            @PathVariable String driverId) {
+
+        locationService.markDriverAvailableAfterTripCompletion(driverId);
+    }
 }

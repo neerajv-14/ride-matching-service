@@ -3,6 +3,8 @@ package com.rideshare.matching_service.client;
 import com.rideshare.matching_service.dto.NearByDriverResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 
 import java.util.List;
@@ -15,5 +17,11 @@ public interface LocationServiceClient {
             @RequestParam double latitude,
             @RequestParam double longitude,
             @RequestParam double radius
+    );
+
+    @PostMapping("/api/v1/locations/drivers/{driverId}/reserve")
+    boolean reserveDriver(
+            @PathVariable String driverId,
+            @RequestParam String rideId
     );
 }

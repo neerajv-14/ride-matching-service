@@ -1,5 +1,6 @@
 package com.rideshare.ride_service.service;
 
+import com.rideshare.ride_service.client.LocationServiceClient;
 import com.rideshare.ride_service.dto.RideRequest;
 import com.rideshare.ride_service.dto.RideResponse;
 import com.rideshare.ride_service.event.RideRequestedEvent;
@@ -20,13 +21,16 @@ import java.util.stream.Collectors;
 @Slf4j
 public class RideService {
 
+    private final LocationServiceClient locationServiceClient;
+
     private final RideRepository rideRepository;
 
     private final KafkaTemplate<String, RideRequestedEvent> kafkaTemplate;
 
     private static final String RIDE_REQUESTED_TOPIC= "ride.requested";
 
-    public RideService(RideRepository rideRepository, KafkaTemplate<String, RideRequestedEvent> kafkaTemplate) {
+    public RideService(LocationServiceClient locationServiceClient, RideRepository rideRepository, KafkaTemplate<String, RideRequestedEvent> kafkaTemplate) {
+        this.locationServiceClient = locationServiceClient;
         this.rideRepository = rideRepository;
         this.kafkaTemplate = kafkaTemplate;
     }
@@ -71,12 +75,28 @@ public class RideService {
     }
 
     // When matching service allocated , it calls this method to update the status to ACCEPTED.
-    public void updateRideWithDriver(String rideId, String driverId){
+    public void updateRideWithDriver(String rideId, String driverId) {
+
         Ride ride = rideRepository.findById(rideId)
                 .orElseThrow(() -> new RuntimeException("Ride not found"));
 
+        // Duplicate RideMatchedEvent
+        if (ride.getDriverId() != null) {
+
+            // Same event consumed again → ignore
+            if (ride.getDriverId().equals(driverId)) {
+                return;
+            }
+
+            // Should not happen in the normal flow
+            throw new RuntimeException(
+                    "Ride already has a different driver assigned: " + rideId
+            );
+        }
+
         ride.setDriverId(driverId);
         ride.setStatus(RideStatus.ACCEPTED);
+
         rideRepository.save(ride);
     }
 
@@ -93,7 +113,7 @@ public class RideService {
         ride.setStatus(RideStatus.RIDE_STARTED);
         ride.setStartedAt(LocalDateTime.now());
         rideRepository.save(ride);
-
+        locationServiceClient.markDriverOnTrip(ride.getDriverId(), rideId);
         return mapToResponse(ride);
     }
 
@@ -110,6 +130,10 @@ public class RideService {
         ride.setActualFare(ride.getEstimatedFare());
         rideRepository.save(ride);
 
+        locationServiceClient.releaseDriver(
+                ride.getDriverId()
+        );
+
         return mapToResponse(ride);
 
     }
@@ -121,6 +145,7 @@ public class RideService {
 
         ride.setStatus(RideStatus.CANCELLED);
         rideRepository.save(ride);
+        locationServiceClient.releaseDriver(ride.getDriverId());
         return mapToResponse(ride);
     }
 
@@ -182,5 +207,14 @@ public class RideService {
         response.setStartedAt(ride.getStartedAt());
         response.setCompletedAt(ride.getCompletedAt());
         return response;
+    }
+
+    public void markMatchingFailed(String rideId, String reason) {
+        Ride ride = rideRepository.findById(rideId)
+                .orElseThrow(() -> new RuntimeException("Ride not found"));
+        log.warn("Ride matching failed because of following reason: " + reason);
+        ride.setStatus(RideStatus.CANCELLED);
+
+        rideRepository.save(ride);
     }
 }

@@ -2,6 +2,7 @@ package com.rideshare.ride_service.service;
 
 
 import com.rideshare.ride_service.event.RideMatchedEvent;
+import com.rideshare.ride_service.event.RideMatchingFailedEvent;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -22,6 +23,19 @@ public class RideEventConsumer {
         rideService.updateRideWithDriver(
                 event.getRideId(),
                 event.getDriverId()
+        );
+    }
+
+    @KafkaListener(
+            topics = "ride.matching.failed",
+            groupId = "ride-service-group"
+    )
+    public void consumeMatchingFailedEvent(
+            RideMatchingFailedEvent event) {
+
+        rideService.markMatchingFailed(
+                event.getRideId(),
+                event.getReason()
         );
     }
 }

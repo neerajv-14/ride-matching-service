@@ -26,4 +26,6 @@ public class RideRequestedEvent {
     private double dropLatitude;
     private double dropLongitude;
     private String dropAddress;
+
+    private int retryCount;
 }
